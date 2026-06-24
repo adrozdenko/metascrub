@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>Photo Cleaner — remove AI metadata</title>
+<style>
+  :root{
+    --bg:#0b0c12; --surface:#15161f; --surface2:#1b1d28; --ink:#edeef5; --muted:#9094a8;
+    --line:#272a39; --accent:#7c6bff; --accent2:#52a4ff;
+    --ok:#43e09b; --ok-bg:rgba(67,224,155,.13);
+    --warn:#f7b955; --warn-bg:rgba(247,185,85,.14);
+    --err:#fb7185; --err-bg:rgba(251,113,133,.14);
+    --pending:#9aa0b4; --pending-bg:rgba(255,255,255,.06);
+    --shadow:0 18px 50px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1100px 520px at 12% -12%, rgba(124,107,255,.22), transparent 60%),
+      radial-gradient(900px 520px at 112% 8%, rgba(82,164,255,.18), transparent 55%),
+      var(--bg);
+    background-attachment:fixed;
+    min-height:100%;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:40px 22px 80px}
+
+  header.app{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .logo{
+    width:46px;height:46px;border-radius:13px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:grid;place-items:center;box-shadow:0 8px 22px rgba(124,107,255,.45);
+  }
+  .logo svg{width:25px;height:25px}
+  h1{font-size:23px;margin:0;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+
+  .card{
+    background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0)),var(--surface);
+    border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);
+    margin-top:22px;overflow:hidden;
+  }
+
+  .drop{
+    padding:42px 26px;text-align:center;cursor:pointer;
+    border:2px dashed #353849;border-radius:18px;margin:18px;
+    transition:.18s ease;background:#11121b;
+  }
+  .drop:hover{border-color:var(--accent);background:#15131f;box-shadow:0 0 0 4px rgba(124,107,255,.08) inset}
+  .drop.drag{border-color:var(--accent);background:#191427;transform:scale(.997);box-shadow:0 0 0 4px rgba(124,107,255,.14) inset}
+  .drop .ico{width:54px;height:54px;margin:0 auto 12px;color:var(--accent)}
+  .drop .big{font-size:17px;font-weight:600}
+  .drop .small{color:var(--muted);font-size:13.5px;margin-top:5px}
+  .drop .formats{color:#6a6f85;font-size:12px;margin-top:10px;letter-spacing:.04em}
+
+  .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 18px 4px}
+  .count{font-weight:600;font-size:14px;margin-right:auto;padding-left:4px}
+  .count span{color:var(--muted);font-weight:500}
+  button.btn{
+    border:0;border-radius:11px;padding:9px 15px;font-size:13.5px;font-weight:600;
+    cursor:pointer;transition:.15s;font-family:inherit;
+  }
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 18px rgba(124,107,255,.35)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.ghost{background:#23252f;color:#c8cbda}
+  .btn.ghost:hover{background:#2c2f3c}
+  .btn:disabled{opacity:.4;cursor:default;box-shadow:none;filter:none}
+
+  ul.list{list-style:none;margin:8px 0 0;padding:8px 14px 16px}
+  li.item{display:flex;gap:14px;align-items:center;padding:12px;border-radius:15px;transition:.15s}
+  li.item+li.item{margin-top:6px}
+  li.item:hover{background:rgba(255,255,255,.03)}
+  .thumb{width:60px;height:60px;border-radius:12px;object-fit:cover;flex:0 0 auto;background:#23252f;border:1px solid var(--line)}
+  .meta{min-width:0;flex:1}
+  .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .note{font-size:12.5px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
+    padding:3px 9px;border-radius:999px;letter-spacing:.01em}
+  .pill.pending{background:var(--pending-bg);color:#b6bacb}
+  .pill.work{background:var(--warn-bg);color:var(--warn)}
+  .pill.done{background:var(--ok-bg);color:var(--ok)}
+  .pill.err{background:var(--err-bg);color:var(--err)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .pill.work .dot{animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  details.tags{margin-top:6px}
+  details.tags summary{font-size:12px;color:var(--accent2);cursor:pointer;list-style:none}
+  details.tags summary::-webkit-details-marker{display:none}
+  details.tags pre{margin:6px 0 0;font-size:11px;color:#a7abbe;background:#0e0f17;border:1px solid var(--line);
+    border-radius:9px;padding:9px 11px;max-height:150px;overflow:auto;white-space:pre-wrap}
+  a.dl{flex:0 0 auto;text-decoration:none}
+  a.dl button{background:#23252f;color:#c8cbda}
+  a.dl button:hover{background:#2c2f3c}
+
+  .foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:22px;line-height:1.6}
+  .foot b{color:#c8cbda;font-weight:600}
+  .hide{display:none}
+  ::selection{background:rgba(124,107,255,.35)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l7 3v5c0 4.2-2.9 7.6-7 8.9C7.9 18.6 5 15.2 5 11V6l7-3z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Photo Cleaner</h1>
+      <p class="sub">Removes AI &amp; provenance metadata (C2PA, IPTC, XMP, EXIF) so your photos post clean.</p>
+    </div>
+  </header>
+
+  <div class="card">
+    <div id="drop" class="drop">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3"/>
+        <path d="M12 3v13"/><path d="M7.5 7.5 12 3l4.5 4.5"/>
+      </svg>
+      <div class="big">Drag photos here</div>
+      <div class="small">or click to choose — you can add several at once</div>
+      <div class="formats">JPG · PNG · WEBP · HEIC · TIFF</div>
+    </div>
+    <input id="file" type="file" accept="image/*,.heic,.tif,.tiff" multiple class="hide" />
+
+    <div id="bar" class="bar hide">
+      <div class="count" id="count"></div>
+      <button class="btn ghost" id="openOut">Open output folder</button>
+      <button class="btn ghost" id="clear">Clear</button>
+      <button class="btn primary" id="dlAll">Download all</button>
+    </div>
+
+    <ul class="list" id="list"></ul>
+  </div>
+
+  <p class="foot">
+    <b>Lossless</b> — your image quality is never reduced. <b>Originals are never changed.</b><br>
+    Cleaned copies are also saved to the <b>out</b> folder automatically.
+  </p>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const list = document.getElementById('list');
+const bar = document.getElementById('bar');
+const countEl = document.getElementById('count');
+let total = 0, done = 0, queue = [], running = 0;
+const MAX = 3;
+
+drop.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => addFiles(e.target.files));
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.remove('drag');}));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+// allow dropping anywhere on the window
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); });
+
+document.getElementById('clear').onclick = () => {
+  list.innerHTML=''; total=0; done=0; queue=[]; bar.classList.add('hide'); updateCount();
+};
+document.getElementById('dlAll').onclick = () => {
+  const links = [...list.querySelectorAll('a.dl[href]')];
+  links.forEach((a,i) => setTimeout(() => a.click(), i*350));
+};
+document.getElementById('openOut').onclick = () => fetch('/open-out', {method:'POST'});
+
+function addFiles(files){
+  const imgs = [...files].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|hei[cf]|tiff?|gif)$/i.test(f.name));
+  if(!imgs.length) return;
+  bar.classList.remove('hide');
+  imgs.forEach(f => { total++; const card = makeCard(f); queue.push(() => clean(f, card)); });
+  updateCount();
+  pump();
+}
+
+function pump(){
+  while(running < MAX && queue.length){ running++; queue.shift()().finally(() => { running--; pump(); }); }
+}
+
+function makeCard(file){
+  const li = document.createElement('li'); li.className='item';
+  const url = URL.createObjectURL(file);
+  li.innerHTML = `
+    <img class="thumb" src="${url}" alt="">
+    <div class="meta">
+      <div class="name">${escapeHtml(file.name)}</div>
+      <div class="note"><span class="pill pending"><span class="dot"></span>Waiting…</span></div>
+    </div>`;
+  list.appendChild(li);
+  return li;
+}
+
+async function clean(file, li){
+  const note = li.querySelector('.note');
+  note.innerHTML = `<span class="pill work"><span class="dot"></span>Cleaning…</span>`;
+  try{
+    const buf = await file.arrayBuffer();
+    const res = await fetch('/clean', {
+      method:'POST',
+      headers:{'X-Filename': encodeURIComponent(file.name), 'Content-Type':'application/octet-stream'},
+      body: buf
+    });
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || 'failed');
+
+    li.querySelector('.thumb').src = data.dataurl;       // show the cleaned image
+    const summary = summarize(data.before);
+    const tags = data.before.length
+      ? `<details class="tags"><summary>What was removed (${data.before.length})</summary><pre>${escapeHtml(data.before.join('\n'))}</pre></details>`
+      : '';
+    note.innerHTML = `
+      <span class="pill done"><span class="dot"></span>Cleaned</span>
+      <span>${summary}</span>${tags}`;
+
+    const a = document.createElement('a');
+    a.className='dl'; a.href=data.dataurl; a.download = data.filename;
+    a.innerHTML = `<button class="btn">Download</button>`;
+    li.appendChild(a);
+  }catch(err){
+    note.innerHTML = `<span class="pill err"><span class="dot"></span>Error</span><span>${escapeHtml(String(err.message||err))}</span>`;
+  }finally{
+    done++; updateCount();
+  }
+}
+
+function summarize(before){
+  if(!before.length) return 'No metadata found — was already clean.';
+  const j = before.join(' ');
+  if(/C2PA|JUMBF|OpenAI|gpt-image|DALL/i.test(j)) return 'AI provenance (C2PA) + tags removed ✓';
+  if(/trainedAlgorithmic|DigitalSourceType|Firefly|Midjourney|SynthID/i.test(j)) return 'AI metadata removed ✓';
+  return `${before.length} metadata tag${before.length>1?'s':''} removed ✓`;
+}
+
+function updateCount(){
+  countEl.innerHTML = total
+    ? `${done} of ${total} cleaned <span>· quality preserved</span>`
+    : '';
+  document.getElementById('dlAll').disabled = done===0;
+}
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+</script>
+</body>
+</html>

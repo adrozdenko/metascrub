@@ -1,0 +1,29 @@
+# --- Personal photos: NEVER publish what users drop in/out ---
+in/*
+out/*
+!in/.gitkeep
+!out/.gitkeep
+
+# --- macOS ---
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- Misc ---
+*.log
+tmp/
+scratch/
