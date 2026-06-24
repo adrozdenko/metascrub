@@ -16,6 +16,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import urllib.parse
@@ -26,8 +27,24 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(BASE_DIR, "out")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-EXIFTOOL = shutil.which("exiftool") or "/opt/homebrew/bin/exiftool"
-MAGICK = shutil.which("magick") or "/opt/homebrew/bin/magick"
+def _tool(name, *fallbacks):
+    """Resolve a binary from PATH (any OS), with optional explicit fallbacks."""
+    return shutil.which(name) or next((f for f in fallbacks if os.path.exists(f)), name)
+
+EXIFTOOL = _tool("exiftool", "/opt/homebrew/bin/exiftool", "/usr/local/bin/exiftool")
+# ImageMagick 7 ships `magick`; IM6 ships `convert` — both accept the same args we use.
+MAGICK = shutil.which("magick") or shutil.which("convert") \
+    or _tool("magick", "/opt/homebrew/bin/magick", "/usr/local/bin/magick")
+
+
+def reveal(path):
+    """Open a folder in the OS file manager — macOS / Windows / Linux."""
+    if sys.platform == "darwin":
+        subprocess.run(["open", path], check=False)
+    elif os.name == "nt":
+        os.startfile(path)  # type: ignore[attr-defined]  # Windows only
+    else:
+        subprocess.run(["xdg-open", path], check=False)  # Linux / BSD
 
 # Tags that indicate AI generation / provenance — used for the before/after report.
 SIGNAL_RE = re.compile(
@@ -159,7 +176,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(payload).encode())
         elif path == "/open-out":
             try:
-                subprocess.run(["open", OUT_DIR], check=False)
+                reveal(OUT_DIR)
                 self._send(200, b'{"ok":true}')
             except Exception as e:  # noqa
                 self._send(200, json.dumps({"ok": False, "error": str(e)}).encode())

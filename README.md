@@ -7,7 +7,7 @@
 **For photographers.** You took the shot and retouched it with AI tools — it's still *your* photograph. But your editor embeds **C2PA / IPTC / XMP / EXIF** provenance tags, and platforms like Instagram read them and stamp your post *"Made with AI."* MetaScrub removes those tags — **losslessly, entirely on your machine** — so your own work isn't misrepresented.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-7c6bff.svg)](LICENSE)
-![Platform: macOS](https://img.shields.io/badge/platform-macOS-111?logo=apple)
+![Platform](https://img.shields.io/badge/platform-macOS%20·%20Linux%20·%20Windows-111)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB?logo=python&logoColor=white)
 ![No tracking](https://img.shields.io/badge/network-100%25%20offline-43e09b)
 ![Lossless](https://img.shields.io/badge/quality-lossless-43e09b)
@@ -47,24 +47,26 @@ It is **not** for passing **fully AI‑generated images** — text‑to‑image 
 ## 🚀 Quick start
 
 ### Requirements
-- **macOS** (Linux works for the CLI too)
-- [ExifTool](https://exiftool.org/) and [ImageMagick](https://imagemagick.org/) — install with [Homebrew](https://brew.sh):
 
-```bash
-brew install exiftool imagemagick
-```
+Runs anywhere with **Python 3.9+** (standard library only — no pip packages) plus [ExifTool](https://exiftool.org/) and [ImageMagick](https://imagemagick.org/):
 
-Python 3.9+ is already on macOS — no extra packages needed (standard library only).
+| OS | Install the two tools |
+|----|-----------------------|
+| **macOS** | `brew install exiftool imagemagick` |
+| **Linux** (Debian/Ubuntu) | `sudo apt install libimage-exiftool-perl imagemagick` |
+| **Windows** | `winget install OliverBetz.ExifTool ImageMagick.ImageMagick` |
 
 ### Run the app
 
 ```bash
 git clone https://github.com/adrozdenko/metascrub.git
 cd metascrub
-python3 server.py
+python3 server.py        # Windows: py server.py
 ```
 
-…or just **double‑click `Photo Cleaner.command`** in Finder. The app opens in your browser. Drag photos in, download the clean versions. Done.
+It starts a tiny local server and opens the UI in your browser. Drag photos in, download the clean versions. Done.
+
+> **macOS shortcut:** double‑click **`Photo Cleaner.command`** in Finder instead of using the terminal.
 
 ### Use the CLI
 
