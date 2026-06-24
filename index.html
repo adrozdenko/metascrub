@@ -4,136 +4,220 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark" />
-<title>MetaScrub — remove AI metadata</title>
+<title>MetaScrub — strip AI metadata from images</title>
 <style>
   :root{
-    --bg:#0b0c12; --surface:#15161f; --surface2:#1b1d28; --ink:#edeef5; --muted:#9094a8;
-    --line:#272a39; --accent:#7c6bff; --accent2:#52a4ff;
-    --ok:#43e09b; --ok-bg:rgba(67,224,155,.13);
-    --warn:#f7b955; --warn-bg:rgba(247,185,85,.14);
-    --err:#fb7185; --err-bg:rgba(251,113,133,.14);
-    --pending:#9aa0b4; --pending-bg:rgba(255,255,255,.06);
-    --shadow:0 18px 50px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.35);
+    /* neutral zinc base */
+    --bg:#08080a; --panel:#0e0e11; --panel-2:#141417; --elev:#17171b;
+    --fg:#fafafa; --muted:#a1a1aa; --faint:#6b6b74; --ghost:#3f3f46;
+    --line:rgba(255,255,255,.075); --line-2:rgba(255,255,255,.12);
+    /* single sharp "verified / clean" signal */
+    --acid:#cbff4d; --acid-dim:#9ec43a; --acid-ink:#0a0a0a;
+    --amber:#f5b94a; --red:#f8717a;
+    --r-card:16px; --r-btn:10px; --r-pill:7px;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,"Cascadia Code",monospace;
+    --shadow:0 24px 70px -20px rgba(0,0,0,.8), 0 6px 18px -8px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    color:var(--ink);
+    font-family:var(--sans); color:var(--fg); background:var(--bg);
+    min-height:100%; -webkit-font-smoothing:antialiased; letter-spacing:-.01em;
+    position:relative; overflow-x:hidden;
+  }
+  /* layered atmosphere: dotted grid + faint aurora + grain */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-2; pointer-events:none;
     background:
-      radial-gradient(1100px 520px at 12% -12%, rgba(124,107,255,.22), transparent 60%),
-      radial-gradient(900px 520px at 112% 8%, rgba(82,164,255,.18), transparent 55%),
-      var(--bg);
-    background-attachment:fixed;
-    min-height:100%;
-    -webkit-font-smoothing:antialiased;
+      radial-gradient(circle at 50% 0%, rgba(203,255,77,.07), transparent 38%),
+      radial-gradient(900px 480px at 110% -8%, rgba(80,160,255,.06), transparent 60%),
+      radial-gradient(rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:auto, auto, 22px 22px;
+    mask-image:linear-gradient(180deg,#000 0%,#000 55%,transparent 100%);
   }
-  .wrap{max-width:760px;margin:0 auto;padding:40px 22px 80px}
+  body::after{ /* grain */
+    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{max-width:740px;margin:0 auto;padding:38px 22px 90px}
 
-  header.app{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  /* ---------- header ---------- */
+  header.app{display:flex;align-items:center;gap:14px;margin-bottom:26px}
   .logo{
-    width:46px;height:46px;border-radius:13px;flex:0 0 auto;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    display:grid;place-items:center;box-shadow:0 8px 22px rgba(124,107,255,.45);
+    width:46px;height:46px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;
+    background:linear-gradient(180deg,#1b1b1f,#101013);
+    border:1px solid var(--line-2);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 8px 22px rgba(0,0,0,.5), 0 0 0 0 rgba(203,255,77,.0);
+    position:relative;
   }
-  .logo svg{width:25px;height:25px}
-  h1{font-size:23px;margin:0;letter-spacing:-.02em}
-  .sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+  .logo::after{content:"";position:absolute;inset:-1px;border-radius:13px;
+    box-shadow:0 0 26px -6px rgba(203,255,77,.45);opacity:.7}
+  .logo svg{width:24px;height:24px;position:relative}
+  .brand{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .wordmark{display:flex;align-items:center;gap:9px}
+  .wordmark h1{font-size:21px;margin:0;font-weight:680;letter-spacing:-.03em}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--acid-dim);
+    border:1px solid rgba(203,255,77,.3);background:rgba(203,255,77,.06);
+    padding:2px 7px;border-radius:5px;text-transform:uppercase;white-space:nowrap}
+  .sub{color:var(--muted);font-size:13px;margin:0;letter-spacing:0}
+  .gh{margin-left:auto;color:var(--faint);display:grid;place-items:center;width:34px;height:34px;
+    border-radius:9px;border:1px solid var(--line);transition:.15s;flex:0 0 auto}
+  .gh:hover{color:var(--fg);border-color:var(--line-2);background:var(--panel-2)}
+  .gh svg{width:17px;height:17px}
 
-  .card{
-    background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0)),var(--surface);
-    border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);
-    margin-top:22px;overflow:hidden;
-  }
+  /* ---------- card ---------- */
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.018),transparent 30%),var(--panel);
+    border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden}
 
-  .drop{
-    padding:42px 26px;text-align:center;cursor:pointer;
-    border:2px dashed #353849;border-radius:18px;margin:18px;
-    transition:.18s ease;background:#11121b;
-  }
-  .drop:hover{border-color:var(--accent);background:#15131f;box-shadow:0 0 0 4px rgba(124,107,255,.08) inset}
-  .drop.drag{border-color:var(--accent);background:#191427;transform:scale(.997);box-shadow:0 0 0 4px rgba(124,107,255,.14) inset}
-  .drop .ico{width:54px;height:54px;margin:0 auto 12px;color:var(--accent)}
-  .drop .big{font-size:17px;font-weight:600}
-  .drop .small{color:var(--muted);font-size:13.5px;margin-top:5px}
-  .drop .formats{color:#6a6f85;font-size:12px;margin-top:10px;letter-spacing:.04em}
+  /* ---------- dropzone ---------- */
+  .drop{position:relative;margin:14px;padding:46px 26px 40px;border-radius:13px;cursor:pointer;
+    text-align:center;border:1.5px dashed var(--ghost);background:
+      linear-gradient(rgba(255,255,255,.012),rgba(255,255,255,.012)),
+      repeating-linear-gradient(0deg,transparent,transparent 21px,rgba(255,255,255,.02) 21px,rgba(255,255,255,.02) 22px),
+      repeating-linear-gradient(90deg,transparent,transparent 21px,rgba(255,255,255,.02) 21px,rgba(255,255,255,.02) 22px);
+    transition:.2s ease;overflow:hidden}
+  .drop:hover{border-color:rgba(203,255,77,.5);background:linear-gradient(rgba(203,255,77,.025),rgba(203,255,77,.025))}
+  .drop.drag{border-color:var(--acid);background:linear-gradient(rgba(203,255,77,.05),rgba(203,255,77,.05));transform:scale(.995)}
+  .drop .scanline{position:absolute;left:0;right:0;height:50px;top:-60px;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(203,255,77,.14),transparent);
+    animation:sweep 3.4s linear infinite;opacity:.0;transition:opacity .3s}
+  .drop:hover .scanline,.drop.drag .scanline{opacity:1}
+  @keyframes sweep{0%{top:-60px}100%{top:110%}}
+  .ring{width:58px;height:58px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;
+    background:radial-gradient(circle at 50% 35%,rgba(203,255,77,.16),transparent 70%);
+    border:1px solid var(--line-2)}
+  .ring svg{width:25px;height:25px;color:var(--acid)}
+  .drop .big{font-size:16.5px;font-weight:600;letter-spacing:-.02em}
+  .drop .small{color:var(--muted);font-size:13px;margin-top:5px}
+  .chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:15px}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--faint);
+    border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--panel-2)}
 
-  .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 18px 4px}
-  .count{font-weight:600;font-size:14px;margin-right:auto;padding-left:4px}
-  .count span{color:var(--muted);font-weight:500}
-  button.btn{
-    border:0;border-radius:11px;padding:9px 15px;font-size:13.5px;font-weight:600;
-    cursor:pointer;transition:.15s;font-family:inherit;
-  }
-  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 8px 18px rgba(124,107,255,.35)}
-  .btn.primary:hover{filter:brightness(1.08)}
-  .btn.ghost{background:#23252f;color:#c8cbda}
-  .btn.ghost:hover{background:#2c2f3c}
-  .btn:disabled{opacity:.4;cursor:default;box-shadow:none;filter:none}
+  /* ---------- targets legend ---------- */
+  .legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:11px 18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+  .legend b{color:var(--muted);font-weight:600}
+  .legend .t{color:var(--acid-dim);display:inline-flex;align-items:center;gap:5px}
+  .legend .t::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--acid);box-shadow:0 0 8px rgba(203,255,77,.7)}
 
-  ul.list{list-style:none;margin:8px 0 0;padding:8px 14px 16px}
-  li.item{display:flex;gap:14px;align-items:center;padding:12px;border-radius:15px;transition:.15s}
-  li.item+li.item{margin-top:6px}
-  li.item:hover{background:rgba(255,255,255,.03)}
-  .thumb{width:60px;height:60px;border-radius:12px;object-fit:cover;flex:0 0 auto;background:#23252f;border:1px solid var(--line)}
+  /* ---------- toolbar ---------- */
+  .bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:13px 16px;border-top:1px solid var(--line)}
+  .count{font-family:var(--mono);font-size:12px;letter-spacing:.05em;color:var(--muted);margin-right:auto}
+  .count b{color:var(--fg);font-weight:700}
+  .count .q{color:var(--acid)}
+  button.btn,a.btn{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+    border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg);
+    border-radius:var(--r-btn);padding:8px 13px;cursor:pointer;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:7px;font-weight:600}
+  button.btn:hover,a.btn:hover{background:var(--elev);border-color:var(--line-2)}
+  .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+  .btn.ghost:hover{color:var(--fg);background:var(--panel-2)}
+  .btn.primary{background:var(--acid);color:var(--acid-ink);border-color:var(--acid);
+    box-shadow:0 8px 24px -8px rgba(203,255,77,.5)}
+  .btn.primary:hover{background:#d6ff66;border-color:#d6ff66}
+  .btn:disabled{opacity:.4;cursor:default;box-shadow:none;pointer-events:none}
+  :focus-visible{outline:2px solid var(--acid);outline-offset:2px}
+
+  /* ---------- list ---------- */
+  ul.list{list-style:none;margin:0;padding:6px}
+  li.item{display:flex;gap:13px;align-items:center;padding:11px 12px;border-radius:11px;
+    animation:rise .35s cubic-bezier(.2,.7,.2,1) both}
+  li.item+li.item{border-top:1px solid var(--line)}
+  li.item:hover{background:rgba(255,255,255,.022)}
+  @keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  .thumb-wrap{position:relative;width:54px;height:54px;border-radius:10px;overflow:hidden;flex:0 0 auto;
+    background:var(--panel-2);border:1px solid var(--line-2)}
+  .thumb{width:100%;height:100%;object-fit:cover;display:block}
+  .scan{position:absolute;left:0;right:0;height:18px;top:-20px;
+    background:linear-gradient(180deg,transparent,rgba(203,255,77,.55),transparent);
+    box-shadow:0 0 12px rgba(203,255,77,.6);opacity:0}
+  .thumb-wrap.scanning .scan{opacity:1;animation:scan 1.1s ease-in-out infinite}
+  .thumb-wrap.scanning::after{content:"";position:absolute;inset:0;background:rgba(8,8,10,.35)}
+  @keyframes scan{0%{top:-20px}100%{top:54px}}
   .meta{min-width:0;flex:1}
-  .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .note{font-size:12.5px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
-    padding:3px 9px;border-radius:999px;letter-spacing:.01em}
-  .pill.pending{background:var(--pending-bg);color:#b6bacb}
-  .pill.work{background:var(--warn-bg);color:var(--warn)}
-  .pill.done{background:var(--ok-bg);color:var(--ok)}
-  .pill.err{background:var(--err-bg);color:var(--err)}
-  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-  .pill.work .dot{animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  details.tags{margin-top:6px}
-  details.tags summary{font-size:12px;color:var(--accent2);cursor:pointer;list-style:none}
+  .name{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .note{font-size:12px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:var(--r-pill);border:1px solid transparent}
+  .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .badge.queued{color:var(--faint);border-color:var(--line);background:var(--panel-2)}
+  .badge.scanning{color:var(--amber);border-color:rgba(245,185,74,.3);background:rgba(245,185,74,.08)}
+  .badge.scanning .dot{animation:blink 1s infinite}
+  .badge.cleaned{color:var(--acid);border-color:rgba(203,255,77,.32);background:rgba(203,255,77,.08)}
+  .badge.error{color:var(--red);border-color:rgba(248,113,122,.32);background:rgba(248,113,122,.09)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .summary{color:var(--muted)}
+  .summary .ok{color:var(--acid-dim)}
+  details.tags{margin-top:7px;width:100%}
+  details.tags summary{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--faint);cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px}
+  details.tags summary:hover{color:var(--muted)}
   details.tags summary::-webkit-details-marker{display:none}
-  details.tags pre{margin:6px 0 0;font-size:11px;color:#a7abbe;background:#0e0f17;border:1px solid var(--line);
-    border-radius:9px;padding:9px 11px;max-height:150px;overflow:auto;white-space:pre-wrap}
+  details.tags[open] summary{color:var(--muted)}
+  details.tags pre{font-family:var(--mono);margin:8px 0 2px;font-size:10.5px;line-height:1.55;color:#8b8b94;
+    background:#0a0a0c;border:1px solid var(--line);border-radius:9px;padding:10px 12px;max-height:160px;
+    overflow:auto;white-space:pre-wrap}
   a.dl{flex:0 0 auto;text-decoration:none}
-  a.dl button{background:#23252f;color:#c8cbda}
-  a.dl button:hover{background:#2c2f3c}
 
-  .foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:22px;line-height:1.6}
-  .foot b{color:#c8cbda;font-weight:600}
+  .foot{color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.03em;text-align:center;
+    margin-top:24px;line-height:1.8}
+  .foot b{color:var(--muted);font-weight:600}
+  .foot .sep{color:var(--ghost);margin:0 8px}
   .hide{display:none}
-  ::selection{background:rgba(124,107,255,.35)}
+  ::selection{background:rgba(203,255,77,.3);color:#fff}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#26262b;border-radius:8px;border:2px solid var(--bg)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="app">
-    <div class="logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="logo" title="MetaScrub">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#cbff4d" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="4"/>
-        <circle cx="8.5" cy="9" r="1.6"/>
+        <circle cx="8.5" cy="9" r="1.5"/>
         <path d="M21 15.5l-4.6-4.6a2 2 0 0 0-2.8 0L4.5 19.5"/>
       </svg>
     </div>
-    <div>
-      <h1>MetaScrub</h1>
-      <p class="sub">Removes AI &amp; provenance metadata (C2PA, IPTC, XMP, EXIF) so your photos post clean.</p>
+    <div class="brand">
+      <div class="wordmark">
+        <h1>MetaScrub</h1>
+        <span class="tag">offline · lossless</span>
+      </div>
+      <p class="sub">Strips C2PA, IPTC, XMP &amp; EXIF provenance data so your photos post clean.</p>
     </div>
+    <a class="gh" href="https://github.com/adrozdenko/metascrub" target="_blank" rel="noopener" title="View source on GitHub">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
   </header>
 
   <div class="card">
     <div id="drop" class="drop">
-      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3"/>
-        <path d="M12 3v13"/><path d="M7.5 7.5 12 3l4.5 4.5"/>
-      </svg>
-      <div class="big">Drag photos here</div>
-      <div class="small">or click to choose — you can add several at once</div>
-      <div class="formats">JPG · PNG · WEBP · HEIC · TIFF</div>
+      <span class="scanline"></span>
+      <div class="ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-3"/><path d="M12 3v13"/><path d="M7.5 7.5 12 3l4.5 4.5"/>
+        </svg>
+      </div>
+      <div class="big">Drop photos to scan &amp; scrub</div>
+      <div class="small">or click to choose — add several at once</div>
+      <div class="chips">
+        <span class="chip">JPG</span><span class="chip">PNG</span><span class="chip">WEBP</span>
+        <span class="chip">HEIC</span><span class="chip">TIFF</span>
+      </div>
     </div>
-    <input id="file" type="file" accept="image/*,.heic,.tif,.tiff" multiple class="hide" />
+
+    <div class="legend">
+      <b>Targets</b>
+      <span class="t">C2PA</span><span class="t">JUMBF</span><span class="t">IPTC</span>
+      <span class="t">XMP</span><span class="t">EXIF</span>
+    </div>
 
     <div id="bar" class="bar hide">
       <div class="count" id="count"></div>
-      <button class="btn ghost" id="openOut">Open output folder</button>
+      <button class="btn ghost" id="openOut">Output folder</button>
       <button class="btn ghost" id="clear">Clear</button>
       <button class="btn primary" id="dlAll">Download all</button>
     </div>
@@ -142,10 +226,12 @@
   </div>
 
   <p class="foot">
-    <b>Lossless</b> — your image quality is never reduced. <b>Originals are never changed.</b><br>
-    Cleaned copies are also saved to the <b>out</b> folder automatically.
+    <b>100% on-device</b> — nothing is uploaded.<span class="sep">·</span><b>Originals untouched.</b><br>
+    Cleaned copies saved to the <b>out</b> folder automatically.
   </p>
 </div>
+
+<input id="file" type="file" accept="image/*,.heic,.tif,.tiff" multiple class="hide" />
 
 <script>
 const drop = document.getElementById('drop');
@@ -161,16 +247,14 @@ fileInput.addEventListener('change', e => addFiles(e.target.files));
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.add('drag');}));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.remove('drag');}));
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
-// allow dropping anywhere on the window
 window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('drop', e => { e.preventDefault(); });
+window.addEventListener('drop', e => e.preventDefault());
 
 document.getElementById('clear').onclick = () => {
   list.innerHTML=''; total=0; done=0; queue=[]; bar.classList.add('hide'); updateCount();
 };
 document.getElementById('dlAll').onclick = () => {
-  const links = [...list.querySelectorAll('a.dl[href]')];
-  links.forEach((a,i) => setTimeout(() => a.click(), i*350));
+  [...list.querySelectorAll('a.dl[href]')].forEach((a,i) => setTimeout(() => a.click(), i*350));
 };
 document.getElementById('openOut').onclick = () => fetch('/open-out', {method:'POST'});
 
@@ -182,27 +266,24 @@ function addFiles(files){
   updateCount();
   pump();
 }
-
 function pump(){
   while(running < MAX && queue.length){ running++; queue.shift()().finally(() => { running--; pump(); }); }
 }
-
 function makeCard(file){
   const li = document.createElement('li'); li.className='item';
   const url = URL.createObjectURL(file);
   li.innerHTML = `
-    <img class="thumb" src="${url}" alt="">
+    <div class="thumb-wrap scanning"><img class="thumb" src="${url}" alt=""><span class="scan"></span></div>
     <div class="meta">
       <div class="name">${escapeHtml(file.name)}</div>
-      <div class="note"><span class="pill pending"><span class="dot"></span>Waiting…</span></div>
+      <div class="note"><span class="badge queued"><span class="dot"></span>Queued</span></div>
     </div>`;
   list.appendChild(li);
   return li;
 }
-
 async function clean(file, li){
   const note = li.querySelector('.note');
-  note.innerHTML = `<span class="pill work"><span class="dot"></span>Cleaning…</span>`;
+  note.innerHTML = `<span class="badge scanning"><span class="dot"></span>Scanning</span>`;
   try{
     const buf = await file.arrayBuffer();
     const res = await fetch('/clean', {
@@ -213,41 +294,39 @@ async function clean(file, li){
     const data = await res.json();
     if(!data.ok) throw new Error(data.error || 'failed');
 
-    li.querySelector('.thumb').src = data.dataurl;       // show the cleaned image
-    const summary = summarize(data.before);
+    li.querySelector('.thumb-wrap').classList.remove('scanning');
+    li.querySelector('.thumb').src = data.dataurl;
     const tags = data.before.length
-      ? `<details class="tags"><summary>What was removed (${data.before.length})</summary><pre>${escapeHtml(data.before.join('\n'))}</pre></details>`
+      ? `<details class="tags"><summary>▸ readout · ${data.before.length} tags removed</summary><pre>${escapeHtml(data.before.join('\n'))}</pre></details>`
       : '';
     note.innerHTML = `
-      <span class="pill done"><span class="dot"></span>Cleaned</span>
-      <span>${summary}</span>${tags}`;
+      <span class="badge cleaned"><span class="dot"></span>Cleaned</span>
+      <span class="summary">${summarize(data.before)}</span>${tags}`;
 
     const a = document.createElement('a');
-    a.className='dl'; a.href=data.dataurl; a.download = data.filename;
-    a.innerHTML = `<button class="btn">Download</button>`;
+    a.className='dl'; a.href=data.dataurl; a.download=data.filename;
+    a.innerHTML = `<span class="btn">Download ↓</span>`;
     li.appendChild(a);
   }catch(err){
-    note.innerHTML = `<span class="pill err"><span class="dot"></span>Error</span><span>${escapeHtml(String(err.message||err))}</span>`;
+    li.querySelector('.thumb-wrap').classList.remove('scanning');
+    note.innerHTML = `<span class="badge error"><span class="dot"></span>Error</span><span class="summary">${escapeHtml(String(err.message||err))}</span>`;
   }finally{
     done++; updateCount();
   }
 }
-
 function summarize(before){
-  if(!before.length) return 'No metadata found — was already clean.';
+  if(!before.length) return 'no metadata found — already clean';
   const j = before.join(' ');
-  if(/C2PA|JUMBF|OpenAI|gpt-image|DALL/i.test(j)) return 'AI provenance (C2PA) + tags removed ✓';
-  if(/trainedAlgorithmic|DigitalSourceType|Firefly|Midjourney|SynthID/i.test(j)) return 'AI metadata removed ✓';
-  return `${before.length} metadata tag${before.length>1?'s':''} removed ✓`;
+  if(/C2PA|JUMBF|OpenAI|gpt-image|DALL/i.test(j)) return '<span class="ok">C2PA provenance + tags removed ✓</span>';
+  if(/trainedAlgorithmic|DigitalSourceType|Firefly|Midjourney|SynthID/i.test(j)) return '<span class="ok">AI metadata removed ✓</span>';
+  return `<span class="ok">${before.length} tag${before.length>1?'s':''} removed ✓</span>`;
 }
-
 function updateCount(){
   countEl.innerHTML = total
-    ? `${done} of ${total} cleaned <span>· quality preserved</span>`
+    ? `<b>${done}</b> / ${total} cleaned${done<total?` <span class="q">· ${total-done} in queue</span>`:''}`
     : '';
   document.getElementById('dlAll').disabled = done===0;
 }
-
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 </script>
 </body>
