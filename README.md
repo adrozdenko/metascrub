@@ -2,9 +2,9 @@
 
 # 🧼 MetaScrub
 
-### Strip AI & provenance metadata from your photos — local, lossless, private.
+### Your photo. Your edit. Your work. — minus the metadata that mislabels it as AI.
 
-Removes **C2PA Content Credentials**, **IPTC `digitalSourceType`**, **XMP**, and **EXIF** tags that cause platforms like Instagram to slap a *"Made with AI" / "AI Info"* label on lightly‑edited or AI‑retouched photos.
+**For photographers.** You took the shot and retouched it with AI tools — it's still *your* photograph. But your editor embeds **C2PA / IPTC / XMP / EXIF** provenance tags, and platforms like Instagram read them and stamp your post *"Made with AI."* MetaScrub removes those tags — **losslessly, entirely on your machine** — so your own work isn't misrepresented.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-7c6bff.svg)](LICENSE)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-111?logo=apple)
@@ -20,9 +20,15 @@ Removes **C2PA Content Credentials**, **IPTC `digitalSourceType`**, **XMP**, and
 
 ## Why this exists
 
-Instagram, Facebook and others don't (only) look at your pixels to decide a photo is AI — they read **metadata that AI tools quietly embed in the file**. A single edit in Photoshop Generative Fill or a redraw in ChatGPT writes a signed **C2PA manifest** and an IPTC `digitalSourceType: trainedAlgorithmicMedia` tag. The platform reads it and labels the post — even when the edit was trivial.
+You photograph a client, then use an AI tool (Photoshop Generative Fill, Lightroom AI, Topaz, ChatGPT…) to retouch the shot — fix a stray hair, smooth skin, clean the background. The result is still **your** photograph: your subject, your composition, your work. But the moment an AI tool touches the file it writes a signed **C2PA manifest** and an IPTC `digitalSourceType: trainedAlgorithmicMedia` tag. Instagram, Facebook and others read that metadata and stamp your post *"Made with AI"* — even when the edit was trivial.
 
-**MetaScrub removes those signals**, losslessly, on your own machine. Nothing is uploaded anywhere.
+That label misrepresents genuine photography as synthetic. **MetaScrub removes the metadata** so your own photos are judged as what they are — losslessly, on your own machine, nothing uploaded.
+
+## ✅ Intended use — and the line it won't cross
+
+MetaScrub is for **cleaning false AI‑labels off photographs you actually took and retouched.** Your camera captured the moment; an AI tool helped you edit it; the work is yours.
+
+It is **not** for passing **fully AI‑generated images** — text‑to‑image pictures invented from a prompt, with no camera involved — off as authentic photography. Removing metadata doesn't make a synthetic image real, and where a platform or law requires AI disclosure, **disclose it.** Be honest about what you made.
 
 ## ✨ Features
 
@@ -81,11 +87,9 @@ The app exposes a minimal local HTTP server (`server.py`, stdlib only). The brow
 
 ## ⚠️ What this can — and can't — do (read this)
 
-MetaScrub removes **metadata**, which is the confirmed signal platforms use for the auto AI‑label. It does **not** remove **pixel‑level invisible watermarks** such as Google **SynthID** or **Trufo**, which some generators (e.g. OpenAI's `gpt-image`, Google's Imagen/Gemini) bake directly into the image data. Those survive metadata removal, re‑encoding, cropping and compression by design.
+MetaScrub removes **metadata**, which is the signal platforms use for the automatic AI‑label. It does **not** remove **pixel‑level invisible watermarks** such as Google **SynthID** or **Trufo**, which some *generative* tools (OpenAI's `gpt-image`, Google's Imagen/Gemini) bake directly into the pixels. Those survive metadata removal, re‑encoding, cropping and compression by design.
 
-> **If you must avoid AI detection entirely, retouch with a non‑generative tool** (Lightroom, Photoshop manual edits, Capture One, Topaz) instead of regenerating the image — then no watermark and no `trainedAlgorithmicMedia` tag is ever added in the first place.
-
-This tool is intended for legitimate privacy and metadata‑hygiene use. Be honest about AI‑generated content where disclosure is required.
+> **Tip for photographers:** to keep your retouched photo unambiguously *yours*, prefer **non‑generative editors** (Lightroom, Capture One, Photoshop manual retouching, Topaz) over tools that *regenerate* the image. Pixel‑editing your own photograph adds no watermark and no `trainedAlgorithmicMedia` tag in the first place — and the result is plainly your own work, not a synthetic rebuild of it.
 
 ## 🗂️ Project structure
 
