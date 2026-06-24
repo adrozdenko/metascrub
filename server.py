@@ -182,7 +182,7 @@ def main():
     port = free_port()
     url = f"http://127.0.0.1:{port}/"
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print("\n  Photo Cleaner is running.")
+    print("\n  MetaScrub is running.")
     print(f"  If your browser didn't open, go to:  {url}")
     print("  (Keep this window open while using the app. Close it when done.)\n")
     threading.Timer(0.6, lambda: webbrowser.open(url)).start()
