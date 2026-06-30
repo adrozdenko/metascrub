@@ -78,6 +78,21 @@ It starts a tiny local server and opens the UI in your browser. Drag photos in, 
 
 Each run prints a per‑file before/after report.
 
+### Run the Telegram bot
+
+Create a bot with [BotFather](https://t.me/BotFather), then run:
+
+```bash
+export METASCRUB_TELEGRAM_TOKEN="123456:your-bot-token"
+python3 bot.py
+```
+
+Send the bot an image as a **File/Document** and it replies with a cleaned copy.
+Telegram photos may be compressed before the bot receives them, so File/Document
+uploads are best when you want to preserve the original bytes. Unlike the web
+app and CLI, Telegram bot traffic passes through Telegram. Telegram's default
+Bot API download limit is 20 MB per file.
+
 ## 🔍 How it works
 
 | Format | Method | Quality |
@@ -99,6 +114,7 @@ MetaScrub removes **metadata**, which is the signal platforms use for the automa
 metascrub/
 ├── Photo Cleaner.command   # double‑click launcher (macOS)
 ├── server.py               # local web server + cleaning engine (stdlib only)
+├── bot.py                  # Telegram bot using the same cleaning engine
 ├── index.html              # the UI (dark theme)
 ├── clean.sh                # CLI batch cleaner
 ├── in/                     # drop photos here (CLI) — git‑ignored
